@@ -1,15 +1,20 @@
 'use client';
 import { useState } from 'react';
 import { I } from './icons';
-import { DATA } from './data';
+import type { AppData } from '../lib/types';
 
-export default function Examenes({ role }: { role: string }) {
-  const D = DATA;
+export default function Examenes({ data, role }: { data: AppData; role: string }) {
+  const D = data;
   const isTeacher = role === 'teacher';
   const [tab, setTab] = useState('all');
   const list = tab === 'all' ? D.EXAMS : D.EXAMS.filter(e => e.status === tab);
   const scored = D.EXAMS.filter(e => e.score);
-  const avg = Math.round(scored.reduce((a, b) => a + (b.score as number), 0) / scored.length);
+  const avg = scored.length > 0
+    ? Math.round(scored.reduce((a, b) => a + (b.score as number), 0) / scored.length)
+    : 0;
+  const bestExam = scored.length > 0
+    ? scored.reduce((best, e) => (e.score! > best.score! ? e : best), scored[0])
+    : null;
 
   return (
     <div className="content content--narrow fade-in">
@@ -26,12 +31,12 @@ export default function Examenes({ role }: { role: string }) {
         <div className="kpi">
           <div className="kpi__label">Promedio general</div>
           <div className="kpi__value">{avg}<span style={{ fontSize: 18, color: 'var(--text-muted)' }}>/100</span></div>
-          <div className="kpi__delta"><I.trend size={12} /> +4 vs anterior</div>
+          <div className="kpi__delta">{scored.length > 0 ? `${scored.length} calificado${scored.length !== 1 ? 's' : ''}` : 'Sin calificaciones aún'}</div>
         </div>
         <div className="kpi">
           <div className="kpi__label">Pendientes</div>
-          <div className="kpi__value" style={{ color: 'var(--acc-amber)' }}>2</div>
-          <div className="kpi__delta">Próximo: 8 May</div>
+          <div className="kpi__value" style={{ color: 'var(--acc-amber)' }}>{D.EXAMS.filter(e => e.status === 'pending').length}</div>
+          <div className="kpi__delta">Próximo: {D.EXAMS.find(e => e.status === 'pending')?.date ?? '—'}</div>
         </div>
         <div className="kpi">
           <div className="kpi__label">Calificados</div>
@@ -40,8 +45,8 @@ export default function Examenes({ role }: { role: string }) {
         </div>
         <div className="kpi">
           <div className="kpi__label">Mejor materia</div>
-          <div className="kpi__value" style={{ fontSize: 24, fontFamily: 'var(--font-sans)', fontWeight: 600 }}>Biología</div>
-          <div className="kpi__delta">92 / 100</div>
+          <div className="kpi__value" style={{ fontSize: 24, fontFamily: 'var(--font-sans)', fontWeight: 600 }}>{bestExam?.materia ?? '—'}</div>
+          <div className="kpi__delta">{bestExam?.score ?? '—'} / 100</div>
         </div>
       </div>
 

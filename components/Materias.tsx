@@ -1,9 +1,9 @@
 import React from 'react';
 import { I } from './icons';
-import { DATA } from './data';
+import type { AppData } from '../lib/types';
 
-export default function Materias({ setView, role }: { setView: (v: string) => void; role: string }) {
-  const D = DATA;
+export default function Materias({ data, setView, role }: { data: AppData; setView: (v: string) => void; role: string }) {
+  const D = data;
   const isTeacher = role === 'teacher';
   return (
     <div className="content content--narrow fade-in">
@@ -11,7 +11,9 @@ export default function Materias({ setView, role }: { setView: (v: string) => vo
         <div>
           <div className="page-eyebrow">{isTeacher ? 'Tus grupos' : 'Tu plan de estudios'}</div>
           <h1 className="page-title">{isTeacher ? 'Grupos que enseñas' : 'Mis materias'}</h1>
-          <p className="page-subtitle">{isTeacher ? '6 grupos activos · 142 alumnos en total · generación 2026.' : '6 materias activas en tu preparación para examen de admisión.'}</p>
+          <p className="page-subtitle">{isTeacher
+            ? `${D.MATERIAS.length} grupo${D.MATERIAS.length !== 1 ? 's' : ''} activo${D.MATERIAS.length !== 1 ? 's' : ''} · generación 2026.`
+            : `${D.MATERIAS.length} materia${D.MATERIAS.length !== 1 ? 's' : ''} activa${D.MATERIAS.length !== 1 ? 's' : ''} en tu preparación para examen de admisión.`}</p>
         </div>
         {isTeacher && <button className="btn btn--primary"><I.plus size={15} /> Nuevo grupo</button>}
       </div>

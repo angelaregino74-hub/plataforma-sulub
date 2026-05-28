@@ -1,9 +1,9 @@
 import React from 'react';
 import { I } from './icons';
-import { DATA } from './data';
+import type { AppData } from '../lib/types';
 
-export default function Directorio() {
-  const D = DATA;
+export default function Directorio({ data }: { data: AppData }) {
+  const D = data;
   return (
     <div className="content content--narrow fade-in">
       <div className="page-header">

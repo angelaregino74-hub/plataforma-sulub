@@ -1,20 +1,41 @@
 import React from 'react';
 import { I } from './icons';
-import { DATA } from './data';
+import type { AppData } from '../lib/types';
 
-export default function Calendario({ role }: { role: string }) {
-  const D = DATA;
+const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const MONTHS_SHORT = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+export default function Calendario({ data, role }: { data: AppData; role: string }) {
+  const D = data;
   const isTeacher = role === 'teacher';
-  const startCol = 4;
-  const totalDays = 31;
-  const today = 5;
+
+  const now       = new Date();
+  const todayNum  = now.getDate();
+  const monthName = MONTHS[now.getMonth()];
+  const year      = now.getFullYear();
+
+  // Construir celdas del calendario para el mes actual
+  const firstDay   = new Date(year, now.getMonth(), 1).getDay(); // 0=Dom
+  const totalDays  = new Date(year, now.getMonth() + 1, 0).getDate();
+  const startCol   = firstDay;
 
   const cells: { out: boolean; num: number }[] = [];
-  for (let i = 0; i < startCol; i++) cells.push({ out: true, num: 30 - startCol + i + 1 });
-  for (let d = 1; d <= totalDays; d++) cells.push({ out: false, num: d });
-  while (cells.length % 7 !== 0) cells.push({ out: true, num: cells.length - startCol - totalDays + 1 });
+  const prevMonthDays = new Date(year, now.getMonth(), 0).getDate();
+  for (let i = 0; i < startCol; i++)
+    cells.push({ out: true, num: prevMonthDays - startCol + i + 1 });
+  for (let d = 1; d <= totalDays; d++)
+    cells.push({ out: false, num: d });
+  while (cells.length % 7 !== 0)
+    cells.push({ out: true, num: cells.length - startCol - totalDays + 1 });
 
   const dows = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+  // Próximos eventos desde Supabase (CAL_EVENTS)
+  const upcomingEvents = Object.entries(D.CAL_EVENTS)
+    .map(([day, evs]) => ({ day: parseInt(day), evs }))
+    .filter(({ day }) => day >= todayNum)
+    .sort((a, b) => a.day - b.day)
+    .slice(0, 5);
 
   return (
     <div className="content content--narrow fade-in">
@@ -33,7 +54,7 @@ export default function Calendario({ role }: { role: string }) {
       <div className="cal-shell">
         <div>
           <div className="cal-header">
-            <h2 className="cal-title">Mayo · 2026</h2>
+            <h2 className="cal-title">{monthName} · {year}</h2>
             <div className="cal-nav">
               <button className="icon-btn"><I.chevL size={16} /></button>
               <button className="btn btn--sm">Hoy</button>
@@ -45,7 +66,7 @@ export default function Calendario({ role }: { role: string }) {
             {cells.map((c, i) => {
               const events = !c.out ? (D.CAL_EVENTS[c.num] || []) : [];
               return (
-                <div key={i} className={`cal-cell ${c.out ? 'cal-cell--out' : ''} ${!c.out && c.num === today ? 'cal-cell--today' : ''}`}>
+                <div key={i} className={`cal-cell ${c.out ? 'cal-cell--out' : ''} ${!c.out && c.num === todayNum ? 'cal-cell--today' : ''}`}>
                   <div className="cal-cell__num">{c.num}</div>
                   <div className="cal-cell__events">
                     {events.slice(0, 3).map((e, j) => (
@@ -62,23 +83,23 @@ export default function Calendario({ role }: { role: string }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
           <div className="card cal-side-card">
             <div className="section-title" style={{ marginBottom: 12 }}><span>Próximos eventos</span></div>
-            {[
-              { d: '4',  m: 'May', t: 'Simulacro UNAM Área I',  meta: '09:00 · 3h' },
-              { d: '5',  m: 'May', t: 'Matemáticas — clase 12', meta: '18:00 · Online' },
-              { d: '8',  m: 'May', t: 'Parcial — Matemáticas',  meta: '10:00 · 90 min' },
-              { d: '10', m: 'May', t: 'Parcial — Historia',     meta: '09:00 · 90 min' },
-              { d: '12', m: 'May', t: 'Simulacro UNAM Área II', meta: '09:00 · 3h' },
-            ].map((e, i) => (
-              <div key={i} className="upcoming-event">
-                <div className="upcoming-event__date">
-                  <div className="upcoming-event__day">{e.d}</div>
-                  <div className="upcoming-event__mon">{e.m}</div>
+            {upcomingEvents.length === 0 ? (
+              <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Sin eventos próximos.</div>
+            ) : upcomingEvents.map(({ day, evs }) => (
+              evs.map((ev, j) => (
+                <div key={`${day}-${j}`} className="upcoming-event">
+                  <div className="upcoming-event__date">
+                    <div className="upcoming-event__day">{day}</div>
+                    <div className="upcoming-event__mon">{MONTHS_SHORT[now.getMonth()]}</div>
+                  </div>
+                  <div>
+                    <div className="upcoming-event__title">{ev.title}</div>
+                    <div className="upcoming-event__meta">
+                      {day === todayNum ? 'Hoy' : day === todayNum + 1 ? 'Mañana' : `En ${day - todayNum} días`}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <div className="upcoming-event__title">{e.t}</div>
-                  <div className="upcoming-event__meta">{e.meta}</div>
-                </div>
-              </div>
+              ))
             ))}
           </div>
 

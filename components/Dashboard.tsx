@@ -1,44 +1,98 @@
 import React from 'react';
 import { I } from './icons';
-import { DATA } from './data';
+import type { AppData } from '../lib/types';
 
-export default function Dashboard({ setView }: { setView: (v: string) => void }) {
-  const D = DATA;
-  const today = 5;
+export default function Dashboard({ data, setView }: { data: AppData; setView: (v: string) => void }) {
+  const D = data;
+
+  // Cálculos reales desde Supabase
+  const avgProgress   = D.MATERIAS.length > 0
+    ? Math.round(D.MATERIAS.reduce((a, m) => a + m.progress, 0) / D.MATERIAS.length)
+    : 0;
+  const pendingExams  = D.EXAMS.filter(e => e.status === 'pending').length;
+  const gradedExams   = D.EXAMS.filter(e => e.score !== null);
+  const avgScore      = gradedExams.length > 0
+    ? Math.round(gradedExams.reduce((a, e) => a + (e.score ?? 0), 0) / gradedExams.length)
+    : 0;
+  const gradedSims    = D.SIMULATIONS.filter(s => s.status === 'graded');
+
+  // Próximos eventos del calendario
+  const todayNum = new Date().getDate();
+  const upcomingEvents = Object.entries(D.CAL_EVENTS)
+    .map(([day, evs]) => ({ day: parseInt(day), evs }))
+    .filter(({ day }) => day >= todayNum)
+    .sort((a, b) => a.day - b.day);
+  const nextEvent = upcomingEvents[0];
+
   const days = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
-  const weekDays = [4, 5, 6, 7, 8, 9, 10];
+  const weekDays = [
+    todayNum - 1, todayNum, todayNum + 1, todayNum + 2,
+    todayNum + 3, todayNum + 4, todayNum + 5,
+  ];
   const dotColors: Record<string, string> = {
     mat: 'var(--blue-500)', esp: 'var(--acc-emerald)', his: 'var(--acc-amber)',
     bio: 'var(--acc-rose)', qui: 'var(--acc-violet)', fis: 'var(--acc-teal)',
     sim: 'var(--acc-violet)', exam: 'var(--acc-rose)', tut: 'var(--acc-emerald)',
   };
 
+  // Materia con menor progreso (para recomendar)
+  const weakestMateria = D.MATERIAS.length > 0
+    ? [...D.MATERIAS].sort((a, b) => a.progress - b.progress)[0]
+    : null;
+
   return (
     <div className="content content--narrow fade-in">
       <div className="hero-greet">
         <div>
-          <div className="hero-greet__hello">¡Hola Alejandro!</div>
-          <h1 className="hero-greet__title">Vas al 64%<br />de tu prepa para la UNAM.</h1>
-          <p className="hero-greet__sub">Tienes 2 exámenes esta semana y 1 simulacro el lunes. Mantén el ritmo — vas mejor que el 78% del grupo.</p>
+          <div className="hero-greet__hello">¡Bienvenido!</div>
+          <h1 className="hero-greet__title">Vas al {avgProgress}%<br />de tu preparación.</h1>
+          <p className="hero-greet__sub">
+            {pendingExams > 0
+              ? `Tienes ${pendingExams} examen${pendingExams > 1 ? 'es' : ''} pendiente${pendingExams > 1 ? 's' : ''}. ¡Sigue adelante!`
+              : 'No tienes exámenes pendientes por ahora. ¡Buen trabajo!'}
+          </p>
           <div className="hero-stats">
-            <div><div className="hero-stat__num">24</div><div className="hero-stat__lbl">Materiales nuevos</div></div>
-            <div><div className="hero-stat__num">3</div><div className="hero-stat__lbl">Simulacros</div></div>
             <div>
-              <div className="hero-stat__num">82<span style={{ fontSize: 18, color: 'var(--text-muted)' }}>%</span></div>
+              <div className="hero-stat__num">{D.RECENT_MATERIALS.length}</div>
+              <div className="hero-stat__lbl">Materiales</div>
+            </div>
+            <div>
+              <div className="hero-stat__num">{gradedSims.length}</div>
+              <div className="hero-stat__lbl">Simulacros</div>
+            </div>
+            <div>
+              <div className="hero-stat__num">
+                {avgScore > 0 ? avgScore : '—'}
+                {avgScore > 0 && <span style={{ fontSize: 18, color: 'var(--text-muted)' }}>%</span>}
+              </div>
               <div className="hero-stat__lbl">Promedio</div>
             </div>
           </div>
         </div>
-        <div className="hero-next">
-          <div className="hero-next__orbit"></div>
-          <div className="hero-next__eyebrow">Próxima clase</div>
-          <h3 className="hero-next__title">Funciones cuadráticas — Cap. 13</h3>
-          <div className="hero-next__meta">Matemáticas · Prof. Luis Castillo</div>
-          <div className="hero-next__time">
-            <span className="hero-next__time-val">18:00</span>
-            <span className="hero-next__time-lbl">Hoy · en 2h 14min</span>
+
+        {nextEvent ? (
+          <div className="hero-next">
+            <div className="hero-next__orbit"></div>
+            <div className="hero-next__eyebrow">Próximo evento</div>
+            <h3 className="hero-next__title">{nextEvent.evs[0]?.title}</h3>
+            <div className="hero-next__meta">
+              {nextEvent.evs.length > 1 ? `+${nextEvent.evs.length - 1} eventos más este día` : 'Mayo 2026'}
+            </div>
+            <div className="hero-next__time">
+              <span className="hero-next__time-val">Día {nextEvent.day}</span>
+              <span className="hero-next__time-lbl">
+                {nextEvent.day === todayNum ? 'Hoy' : nextEvent.day === todayNum + 1 ? 'Mañana' : `En ${nextEvent.day - todayNum} días`}
+              </span>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="hero-next">
+            <div className="hero-next__orbit"></div>
+            <div className="hero-next__eyebrow">Sin eventos próximos</div>
+            <h3 className="hero-next__title">Todo al día</h3>
+            <div className="hero-next__meta">No hay eventos próximos en el calendario</div>
+          </div>
+        )}
       </div>
 
       <div className="dash-grid">
@@ -51,9 +105,8 @@ export default function Dashboard({ setView }: { setView: (v: string) => void })
             <div className="week-strip">
               {weekDays.map((d, i) => {
                 const events = D.CAL_EVENTS[d] || [];
-                const isToday = d === today;
                 return (
-                  <div key={d} className={`week-day ${isToday ? 'week-day--today' : ''}`}>
+                  <div key={d} className={`week-day ${d === todayNum ? 'week-day--today' : ''}`}>
                     <div className="week-day__name">{days[i]}</div>
                     <div className="week-day__num">{d}</div>
                     <div className="week-day__dots">
@@ -72,45 +125,55 @@ export default function Dashboard({ setView }: { setView: (v: string) => void })
               <span>Material reciente</span>
               <a className="section-title__action" onClick={() => setView('material')} style={{ cursor: 'pointer' }}>Ver todo →</a>
             </div>
-            <div className="list">
-              {D.RECENT_MATERIALS.map(m => (
-                <div key={m.id} className="list__row">
-                  <div className="list__icon" style={{ background: m.color + '18', color: m.color }}>{m.type}</div>
-                  <div>
-                    <div className="list__title">{m.title}</div>
-                    <div className="list__meta">{m.materia} · {m.size}</div>
+            {D.RECENT_MATERIALS.length === 0 ? (
+              <div style={{ color: 'var(--text-muted)', fontSize: 13, padding: '12px 0' }}>No hay materiales aún.</div>
+            ) : (
+              <div className="list">
+                {D.RECENT_MATERIALS.slice(0, 5).map(m => (
+                  <div key={m.id} className="list__row">
+                    <div className="list__icon" style={{ background: m.color + '18', color: m.color }}>{m.type}</div>
+                    <div>
+                      <div className="list__title">{m.title}</div>
+                      <div className="list__meta">{m.materia} · {m.size}</div>
+                    </div>
+                    <div className="list__date">{m.date}</div>
+                    <button className="list__action"><I.download size={15} /></button>
                   </div>
-                  <div className="list__date">{m.date}</div>
-                  <button className="list__action"><I.download size={15} /></button>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="card">
             <div className="section-title">
-              <span>Grabaciones nuevas</span>
+              <span>Grabaciones recientes</span>
               <a className="section-title__action" onClick={() => setView('grabaciones')} style={{ cursor: 'pointer' }}>Ver todas →</a>
             </div>
-            <div className="recording-list">
-              {D.RECORDINGS.slice(0, 4).map((r, i) => (
-                <div key={r.id} className={`recording-item ${i === 0 ? 'recording-item--active' : ''}`} onClick={() => setView('grabaciones')}>
-                  <div className="recording-thumb"><span className="recording-thumb__dur">{r.dur}</span></div>
-                  <div>
-                    <div className="recording-item__title">{r.title}</div>
-                    <div className="recording-item__meta">{r.materia} · {r.teacher} · {r.date}</div>
+            {D.RECORDINGS.length === 0 ? (
+              <div style={{ color: 'var(--text-muted)', fontSize: 13, padding: '12px 0' }}>No hay grabaciones aún.</div>
+            ) : (
+              <div className="recording-list">
+                {D.RECORDINGS.slice(0, 4).map((r, i) => (
+                  <div key={r.id} className={`recording-item ${i === 0 ? 'recording-item--active' : ''}`} onClick={() => setView('grabaciones')}>
+                    <div className="recording-thumb"><span className="recording-thumb__dur">{r.dur}</span></div>
+                    <div>
+                      <div className="recording-item__title">{r.title}</div>
+                      <div className="recording-item__meta">{r.materia} · {r.teacher} · {r.date}</div>
+                    </div>
+                    <button className="list__action"><I.play size={15} /></button>
                   </div>
-                  <button className="list__action"><I.play size={15} /></button>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
         <div className="side-stack">
           <div className="card">
             <div className="section-title"><span>Progreso por materia</span></div>
-            {D.MATERIAS.map(m => (
+            {D.MATERIAS.length === 0 ? (
+              <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Sin materias inscritas.</div>
+            ) : D.MATERIAS.map(m => (
               <div key={m.id} className="progress-row">
                 <div className="progress-dot" style={{ background: m.color }}></div>
                 <div className="progress-name">{m.name}</div>
@@ -125,29 +188,37 @@ export default function Dashboard({ setView }: { setView: (v: string) => void })
           <div className="card">
             <div className="section-title"><span>Próximas evaluaciones</span></div>
             <div className="feed">
-              <div className="feed__row">
-                <span className="feed__bullet" style={{ background: 'var(--acc-rose)' }}></span>
-                <div><div className="feed__text"><strong>Parcial 2 — Matemáticas</strong></div><div className="feed__time">Vie 8 May · 10:00 · 90 min</div></div>
-              </div>
-              <div className="feed__row">
-                <span className="feed__bullet" style={{ background: 'var(--acc-amber)' }}></span>
-                <div><div className="feed__text"><strong>Parcial 2 — Historia</strong></div><div className="feed__time">Dom 10 May · 09:00</div></div>
-              </div>
-              <div className="feed__row">
-                <span className="feed__bullet" style={{ background: 'var(--acc-violet)' }}></span>
-                <div><div className="feed__text"><strong>Simulacro UNAM Área II</strong></div><div className="feed__time">Lun 12 May · 9:00 · 3h</div></div>
-              </div>
+              {D.EXAMS.filter(e => e.status === 'pending').length === 0 ? (
+                <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Sin evaluaciones pendientes.</div>
+              ) : D.EXAMS.filter(e => e.status === 'pending').slice(0, 3).map(e => {
+                const mat = D.MATERIAS.find(m => m.name === e.materia);
+                return (
+                  <div key={e.id} className="feed__row">
+                    <span className="feed__bullet" style={{ background: mat?.color || 'var(--acc-rose)' }}></span>
+                    <div>
+                      <div className="feed__text"><strong>{e.name}</strong></div>
+                      <div className="feed__time">{e.date}</div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
-          <div className="card" style={{ background: 'var(--blue-500)', color: '#fff', borderColor: 'var(--blue-500)' }}>
-            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.85, marginBottom: 8 }}>Tip de la semana</div>
-            <div style={{ fontFamily: 'var(--font-serif)', fontSize: 22, lineHeight: 1.2, marginBottom: 12 }}>Repasa el simulacro de la semana pasada antes del lunes.</div>
-            <div style={{ fontSize: 12.5, opacity: 0.85, marginBottom: 16 }}>Sacaste 89 en UNAM Área I. Revisa tus 13 errores en Química y Física.</div>
-            <button className="btn btn--sm" style={{ background: 'rgba(255,255,255,0.18)', color: '#fff', borderColor: 'transparent' }} onClick={() => setView('simulacros')}>
-              Abrir simulacro <I.arrowR size={13} />
-            </button>
-          </div>
+          {weakestMateria && (
+            <div className="card" style={{ background: 'var(--blue-500)', color: '#fff', borderColor: 'var(--blue-500)' }}>
+              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.85, marginBottom: 8 }}>Área de oportunidad</div>
+              <div style={{ fontFamily: 'var(--font-serif)', fontSize: 22, lineHeight: 1.2, marginBottom: 12 }}>
+                Refuerza {weakestMateria.name}
+              </div>
+              <div style={{ fontSize: 12.5, opacity: 0.85, marginBottom: 16 }}>
+                Es tu materia con menor avance — {weakestMateria.progress}%. Revisa el material y las grabaciones.
+              </div>
+              <button className="btn btn--sm" style={{ background: 'rgba(255,255,255,0.18)', color: '#fff', borderColor: 'transparent' }} onClick={() => setView('materias')}>
+                Ver materias <I.arrowR size={13} />
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

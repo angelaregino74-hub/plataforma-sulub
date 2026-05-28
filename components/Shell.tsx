@@ -1,9 +1,21 @@
 import React from 'react';
 import { I } from './icons';
-import { DATA } from './data';
+import type { AppData, UserProfile } from '../lib/types';
 
-export function Sidebar({ role, view, setView }: { role: string; view: string; setView: (v: string) => void }) {
-  const groups = role === 'teacher' ? DATA.NAV_TEACHER : DATA.NAV_STUDENT;
+export function Sidebar({
+  role, view, setView, user, data,
+}: {
+  role: string;
+  view: string;
+  setView: (v: string) => void;
+  user: UserProfile | null;
+  data: AppData;
+}) {
+  const groups = role === 'teacher' ? data.NAV_TEACHER : data.NAV_STUDENT;
+  const displayName = user?.name ?? (role === 'teacher' ? 'Profesor' : 'Alumno');
+  const displayAvatar = user?.avatar ?? (role === 'teacher' ? 'P' : 'A');
+  const displayRole = role === 'teacher' ? 'Profesor' : `Alumno${user?.area ? ' · ' + user.area : ''}`;
+
   return (
     <aside className="sidebar">
       <div className="sidebar__brand">
@@ -33,10 +45,10 @@ export function Sidebar({ role, view, setView }: { role: string; view: string; s
       </nav>
       <div className="sidebar__footer">
         <div className="user-chip" onClick={() => setView('perfil')} style={{ cursor: 'pointer' }}>
-          <div className="avatar">{role === 'teacher' ? 'LC' : 'AS'}</div>
+          <div className="avatar">{displayAvatar}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="user-chip__name">{role === 'teacher' ? 'Luis Castillo' : 'Alejandro Silva'}</div>
-            <div className="user-chip__role">{role === 'teacher' ? 'Profesor' : 'Alumno · Área II'}</div>
+            <div className="user-chip__name">{displayName}</div>
+            <div className="user-chip__role">{displayRole}</div>
           </div>
           <I.chevR size={14} />
         </div>
@@ -46,9 +58,12 @@ export function Sidebar({ role, view, setView }: { role: string; view: string; s
 }
 
 export function Topbar({ role, setRole, theme, setTheme, view, onLogout }: {
-  role: string; setRole: (r: string) => void;
-  theme: string; setTheme: (t: string) => void;
-  view: string; onLogout: () => void;
+  role: string;
+  setRole: (r: 'student' | 'teacher') => void;
+  theme: string;
+  setTheme: (t: string) => void;
+  view: string;
+  onLogout: () => void;
 }) {
   const labels: Record<string, string> = {
     dashboard: 'Inicio', materias: 'Mis materias', grabaciones: 'Grabaciones',
@@ -79,7 +94,7 @@ export function Topbar({ role, setRole, theme, setTheme, view, onLogout }: {
           <I.bell />
           <span className="icon-btn__dot"></span>
         </button>
-        <button className="icon-btn" onClick={onLogout} title="Salir"><I.logout /></button>
+        <button className="icon-btn" onClick={onLogout} title="Cerrar sesión"><I.logout /></button>
       </div>
     </header>
   );

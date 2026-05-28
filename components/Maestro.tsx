@@ -1,18 +1,32 @@
 import React from 'react';
 import { I } from './icons';
-import { DATA } from './data';
+import type { AppData } from '../lib/types';
 
-const GROUP_COUNTS: Record<string, number> = { mat: 42, fis: 37 };
+export default function Maestro({ data, setView }: { data: AppData; setView: (v: string) => void }) {
+  const D = data;
 
-export default function Maestro({ setView }: { setView: (v: string) => void }) {
-  const D = DATA;
-  const luisGroups = D.MATERIAS.filter(m => m.teacher === 'Prof. Luis Castillo');
+  // KPIs calculados desde datos reales
+  const gradedExams = D.EXAMS.filter(e => e.score !== null);
+  const avgScore = gradedExams.length > 0
+    ? Math.round(gradedExams.reduce((a, e) => a + (e.score ?? 0), 0) / gradedExams.length)
+    : null;
+  const pendingExams = D.EXAMS.filter(e => e.status === 'pending').length;
+
+  // Próximo evento del calendario
+  const todayNum = new Date().getDate();
+  const nextEvent = Object.entries(D.CAL_EVENTS)
+    .map(([day, evs]) => ({ day: parseInt(day), evs }))
+    .filter(({ day }) => day >= todayNum)
+    .sort((a, b) => a.day - b.day)[0];
+
+  // Actividad reciente: últimos materiales subidos
+  const recentActivity = D.RECENT_MATERIALS.slice(0, 4);
 
   return (
     <div className="content content--narrow fade-in">
       <div className="page-header">
         <div>
-          <div className="page-eyebrow">Buenos días, Luis</div>
+          <div className="page-eyebrow">Buenos días</div>
           <h1 className="page-title">Panel docente</h1>
           <p className="page-subtitle">Tus grupos, materiales y exámenes a calificar.</p>
         </div>
@@ -24,24 +38,30 @@ export default function Maestro({ setView }: { setView: (v: string) => void }) {
 
       <div className="kpi-row">
         <div className="kpi">
-          <div className="kpi__label">Alumnos activos</div>
-          <div className="kpi__value">142</div>
-          <div className="kpi__delta"><I.trend size={12} /> +8 esta semana</div>
+          <div className="kpi__label">Grupos activos</div>
+          <div className="kpi__value">{D.MATERIAS.length > 0 ? D.MATERIAS.length : '—'}</div>
+          <div className="kpi__delta">Materias asignadas</div>
         </div>
         <div className="kpi">
           <div className="kpi__label">Por calificar</div>
-          <div className="kpi__value" style={{ color: 'var(--acc-amber)' }}>23</div>
-          <div className="kpi__delta">Entregas pendientes</div>
+          <div className="kpi__value" style={{ color: pendingExams > 0 ? 'var(--acc-amber)' : undefined }}>
+            {pendingExams > 0 ? pendingExams : '—'}
+          </div>
+          <div className="kpi__delta">Exámenes pendientes</div>
         </div>
         <div className="kpi">
           <div className="kpi__label">Promedio del grupo</div>
-          <div className="kpi__value">79</div>
-          <div className="kpi__delta"><I.trend size={12} /> +3 vs anterior</div>
+          <div className="kpi__value">{avgScore !== null ? avgScore : '—'}</div>
+          <div className="kpi__delta">{gradedExams.length > 0 ? `${gradedExams.length} exámenes calificados` : 'Sin calificaciones aún'}</div>
         </div>
         <div className="kpi">
-          <div className="kpi__label">Próxima clase</div>
-          <div className="kpi__value" style={{ fontSize: 24, fontFamily: 'var(--font-sans)', fontWeight: 600 }}>Hoy 18:00</div>
-          <div className="kpi__delta">Matemáticas · Área II</div>
+          <div className="kpi__label">Próximo evento</div>
+          <div className="kpi__value" style={{ fontSize: 22, fontFamily: 'var(--font-sans)', fontWeight: 600 }}>
+            {nextEvent ? `Día ${nextEvent.day}` : '—'}
+          </div>
+          <div className="kpi__delta">
+            {nextEvent ? nextEvent.evs[0]?.title ?? 'Evento' : 'Sin eventos próximos'}
+          </div>
         </div>
       </div>
 
@@ -52,69 +72,71 @@ export default function Maestro({ setView }: { setView: (v: string) => void }) {
               <span>Entregas por calificar</span>
               <a className="section-title__action" style={{ cursor: 'pointer' }}>Ver todas →</a>
             </div>
-            <div className="list">
-              {[
-                { n: 'Daniela Pech',  e: 'Parcial 2 — Funciones',  m: 'Matemáticas', d: 'Hace 2h' },
-                { n: 'Carlos Méndez', e: 'Parcial 2 — Funciones',  m: 'Matemáticas', d: 'Hace 3h' },
-                { n: 'Sofía Cab',     e: 'Tarea 8 — Derivadas',    m: 'Matemáticas', d: 'Hoy' },
-                { n: 'Luis Tun',      e: 'Parcial 1 — Cinemática', m: 'Física',      d: 'Ayer' },
-                { n: 'Karla Uc',      e: 'Tarea 5 — Dinámica',     m: 'Física',      d: 'Ayer' },
-              ].map((r, i) => (
-                <div key={i} className="list__row">
-                  <div className="avatar" style={{ width: 36, height: 36, fontSize: 12 }}>{r.n.split(' ').map((s: string) => s[0]).join('')}</div>
-                  <div>
-                    <div className="list__title">{r.n}</div>
-                    <div className="list__meta">{r.e} · {r.m}</div>
-                  </div>
-                  <div className="list__date">{r.d}</div>
-                  <button className="btn btn--sm btn--primary">Calificar</button>
-                </div>
-              ))}
+            <div style={{ textAlign: 'center', padding: '32px 20px', color: 'var(--text-muted)' }}>
+              <div style={{ fontSize: 28, marginBottom: 10 }}>📋</div>
+              <div style={{ fontWeight: 500, fontSize: 14 }}>No hay entregas pendientes</div>
+              <div style={{ fontSize: 12.5, marginTop: 4 }}>Las entregas de los alumnos aparecerán aquí.</div>
             </div>
           </div>
 
           <div className="card">
             <div className="section-title"><span>Tus grupos</span></div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
-              {luisGroups.map(m => (
-                <div key={m.id} style={{ padding: 16, border: '1px solid var(--line)', borderRadius: 12, cursor: 'pointer' }} onClick={() => setView('materias')}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-                    <div className="list__icon" style={{ background: m.color + '18', color: m.color, fontFamily: 'var(--font-serif)', fontSize: 14 }}>{m.short}</div>
-                    <span className="tag">{GROUP_COUNTS[m.id] ?? 30} alumnos</span>
+            {D.MATERIAS.length === 0 ? (
+              <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Sin grupos asignados.</div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
+                {D.MATERIAS.map(m => (
+                  <div key={m.id} style={{ padding: 16, border: '1px solid var(--line)', borderRadius: 12, cursor: 'pointer' }} onClick={() => setView('materias')}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+                      <div className="list__icon" style={{ background: m.color + '18', color: m.color, fontFamily: 'var(--font-serif)', fontSize: 14 }}>{m.short}</div>
+                    </div>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{m.name}</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>Generación 2026</div>
+                    <div style={{ display: 'flex', gap: 14, marginTop: 12, fontSize: 11, color: 'var(--text-muted)' }}>
+                      <span>{m.lessons} clases</span>
+                      <span>{m.materials} materiales</span>
+                    </div>
                   </div>
-                  <div style={{ fontWeight: 600, fontSize: 14 }}>{m.name}</div>
-                  <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>Generación 2026 · Área II</div>
-                  <div style={{ display: 'flex', gap: 14, marginTop: 12, fontSize: 11, color: 'var(--text-muted)' }}>
-                    <span>{m.lessons} clases</span>
-                    <span>{m.materials} materiales</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
         <div className="side-stack">
           <div className="card">
-            <div className="section-title"><span>Promedios por grupo</span></div>
-            {D.MATERIAS.slice(0, 4).map(m => (
+            <div className="section-title"><span>Progreso por materia</span></div>
+            {D.MATERIAS.length === 0 ? (
+              <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Sin materias asignadas.</div>
+            ) : D.MATERIAS.map(m => (
               <div key={m.id} className="progress-row">
                 <div className="progress-dot" style={{ background: m.color }}></div>
                 <div className="progress-name">{m.name}</div>
-                <div className="progress-bar"><div className="progress-bar__fill" style={{ width: `${m.progress + 5}%`, background: m.color }}></div></div>
-                <div className="progress-pct">{m.progress + 5}</div>
+                <div className="progress-bar">
+                  <div className="progress-bar__fill" style={{ width: `${m.progress}%`, background: m.color }}></div>
+                </div>
+                <div className="progress-pct">{m.progress}%</div>
               </div>
             ))}
           </div>
 
           <div className="card">
-            <div className="section-title"><span>Actividad reciente</span></div>
-            <div className="feed">
-              <div className="feed__row"><span className="feed__bullet"></span><div><div className="feed__text"><strong>23 entregas</strong> nuevas en Matemáticas</div><div className="feed__time">Hace 1h</div></div></div>
-              <div className="feed__row"><span className="feed__bullet" style={{ background: 'var(--acc-emerald)' }}></span><div><div className="feed__text">Subiste <strong>Funciones cuadráticas — Cap. 13</strong></div><div className="feed__time">Hoy 10:15</div></div></div>
-              <div className="feed__row"><span className="feed__bullet" style={{ background: 'var(--acc-amber)' }}></span><div><div className="feed__text">Programaste <strong>Parcial 2 — Funciones</strong></div><div className="feed__time">Ayer</div></div></div>
-              <div className="feed__row"><span className="feed__bullet" style={{ background: 'var(--acc-rose)' }}></span><div><div className="feed__text">Calificaste <strong>15 exámenes</strong> de Física</div><div className="feed__time">Lun 28 Abr</div></div></div>
-            </div>
+            <div className="section-title"><span>Material subido recientemente</span></div>
+            {recentActivity.length === 0 ? (
+              <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>No hay material subido aún.</div>
+            ) : (
+              <div className="feed">
+                {recentActivity.map(m => (
+                  <div key={m.id} className="feed__row">
+                    <span className="feed__bullet" style={{ background: m.color }}></span>
+                    <div>
+                      <div className="feed__text"><strong>{m.title}</strong></div>
+                      <div className="feed__time">{m.materia} · {m.date}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
