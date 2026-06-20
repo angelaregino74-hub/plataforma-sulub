@@ -26,7 +26,7 @@ export const NAV_STUDENT = [
     { id: 'material',    label: 'Material',    icon: 'doc'   },
   ]},
   { group: 'EVALUACIÓN',   items: [
-    { id: 'examenes',   label: 'Exámenes parciales', icon: 'exam', badge: '2' },
+    { id: 'examenes',   label: 'Exámenes parciales', icon: 'exam' },
     { id: 'simulacros', label: 'Simulacros',          icon: 'flask' },
   ]},
   { group: 'ORGANIZACIÓN', items: [

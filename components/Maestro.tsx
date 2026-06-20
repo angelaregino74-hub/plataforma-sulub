@@ -91,7 +91,7 @@ export default function Maestro({ data, setView }: { data: AppData; setView: (v:
                       <div className="list__icon" style={{ background: m.color + '18', color: m.color, fontFamily: 'var(--font-serif)', fontSize: 14 }}>{m.short}</div>
                     </div>
                     <div style={{ fontWeight: 600, fontSize: 14 }}>{m.name}</div>
-                    <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>Generación 2026</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>Generación {new Date().getFullYear()}</div>
                     <div style={{ display: 'flex', gap: 14, marginTop: 12, fontSize: 11, color: 'var(--text-muted)' }}>
                       <span>{m.lessons} clases</span>
                       <span>{m.materials} materiales</span>

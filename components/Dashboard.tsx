@@ -76,7 +76,7 @@ export default function Dashboard({ data, setView }: { data: AppData; setView: (
             <div className="hero-next__eyebrow">Próximo evento</div>
             <h3 className="hero-next__title">{nextEvent.evs[0]?.title}</h3>
             <div className="hero-next__meta">
-              {nextEvent.evs.length > 1 ? `+${nextEvent.evs.length - 1} eventos más este día` : 'Mayo 2026'}
+              {nextEvent.evs.length > 1 ? `+${nextEvent.evs.length - 1} eventos más este día` : new Date().toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}
             </div>
             <div className="hero-next__time">
               <span className="hero-next__time-val">Día {nextEvent.day}</span>

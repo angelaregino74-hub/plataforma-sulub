@@ -11,7 +11,16 @@ export function Sidebar({
   user: UserProfile | null;
   data: AppData;
 }) {
-  const groups = role === 'teacher' ? data.NAV_TEACHER : data.NAV_STUDENT;
+  const pendingExams = data.EXAMS.filter(e => e.status === 'pending').length;
+  const rawGroups = role === 'teacher' ? data.NAV_TEACHER : data.NAV_STUDENT;
+  const groups = rawGroups.map(g => ({
+    ...g,
+    items: g.items.map((it: any) =>
+      it.id === 'examenes'
+        ? { ...it, badge: pendingExams > 0 ? String(pendingExams) : undefined }
+        : it
+    ),
+  }));
   const displayName = user?.name ?? (role === 'teacher' ? 'Profesor' : 'Alumno');
   const displayAvatar = user?.avatar ?? (role === 'teacher' ? 'P' : 'A');
   const displayRole = role === 'teacher' ? 'Profesor' : `Alumno${user?.area ? ' · ' + user.area : ''}`;

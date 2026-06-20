@@ -25,8 +25,7 @@ export default function Perfil({ data, user }: { data: AppData; user: UserProfil
           <div className="avatar avatar--xl" style={{ margin: '0 auto' }}>{user?.avatar ?? name.slice(0,2).toUpperCase()}</div>
           <h2 className="profile-card__name">{name}</h2>
           <p className="profile-card__sub">
-            {area ? `Generación 2026 · ${area}` : 'Generación 2026'}
-            {user?.role === 'student' && <><br />Aspirante UNAM</>}
+            {area ? `${area}` : user?.role === 'student' ? 'Alumno' : 'Docente'}
           </p>
           <div className="profile-stats">
             <div>
