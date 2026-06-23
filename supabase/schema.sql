@@ -1,6 +1,7 @@
 -- =================================================================
 -- SULUB PLATAFORMA — Schema de base de datos
 -- Pega este archivo completo en el SQL Editor de Supabase
+-- Seguro para ejecutar múltiples veces (idempotente)
 -- =================================================================
 
 -- ----------------------------------------------------------------
@@ -10,8 +11,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   id         UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   name       TEXT NOT NULL DEFAULT '',
   role       TEXT NOT NULL DEFAULT 'student' CHECK (role IN ('student', 'teacher', 'admin')),
-  avatar     TEXT DEFAULT '',   -- iniciales, ej: 'AS'
-  area       TEXT DEFAULT '',   -- ej: 'Área II'
+  avatar     TEXT DEFAULT '',
+  area       TEXT DEFAULT '',
   email      TEXT DEFAULT '',
   phone      TEXT DEFAULT '',
   created_at TIMESTAMPTZ DEFAULT now()
@@ -19,10 +20,11 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "perfil_propio_lectura"   ON public.profiles;
+DROP POLICY IF EXISTS "perfil_propio_escritura" ON public.profiles;
 CREATE POLICY "perfil_propio_lectura"   ON public.profiles FOR SELECT USING (true);
 CREATE POLICY "perfil_propio_escritura" ON public.profiles FOR UPDATE USING (auth.uid() = id);
 
--- Crea perfil automáticamente al registrar usuario
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
@@ -54,6 +56,8 @@ CREATE TABLE IF NOT EXISTS public.materias (
 );
 
 ALTER TABLE public.materias ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "materias_lectura_todos"   ON public.materias;
+DROP POLICY IF EXISTS "materias_escritura_admin" ON public.materias;
 CREATE POLICY "materias_lectura_todos"    ON public.materias FOR SELECT USING (true);
 CREATE POLICY "materias_escritura_admin"  ON public.materias FOR ALL
   USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('teacher','admin')));
@@ -74,8 +78,11 @@ CREATE TABLE IF NOT EXISTS public.enrollments (
 );
 
 ALTER TABLE public.enrollments ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "enrollment_propio"        ON public.enrollments;
+DROP POLICY IF EXISTS "enrollment_maestro_lee"   ON public.enrollments;
+DROP POLICY IF EXISTS "enrollment_admin_escribe" ON public.enrollments;
 CREATE POLICY "enrollment_propio"        ON public.enrollments FOR SELECT USING (auth.uid() = student_id);
-CREATE POLICY "enrollment_maestro_lee"  ON public.enrollments FOR SELECT
+CREATE POLICY "enrollment_maestro_lee"   ON public.enrollments FOR SELECT
   USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('teacher','admin')));
 CREATE POLICY "enrollment_admin_escribe" ON public.enrollments FOR ALL
   USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
@@ -96,6 +103,8 @@ CREATE TABLE IF NOT EXISTS public.materiales (
 );
 
 ALTER TABLE public.materiales ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "materiales_lectura_todos"   ON public.materiales;
+DROP POLICY IF EXISTS "materiales_maestro_escribe" ON public.materiales;
 CREATE POLICY "materiales_lectura_todos"   ON public.materiales FOR SELECT USING (true);
 CREATE POLICY "materiales_maestro_escribe" ON public.materiales FOR ALL
   USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('teacher','admin')));
@@ -116,6 +125,8 @@ CREATE TABLE IF NOT EXISTS public.grabaciones (
 );
 
 ALTER TABLE public.grabaciones ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "grabaciones_lectura_todos"   ON public.grabaciones;
+DROP POLICY IF EXISTS "grabaciones_maestro_escribe" ON public.grabaciones;
 CREATE POLICY "grabaciones_lectura_todos"   ON public.grabaciones FOR SELECT USING (true);
 CREATE POLICY "grabaciones_maestro_escribe" ON public.grabaciones FOR ALL
   USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('teacher','admin')));
@@ -134,6 +145,8 @@ CREATE TABLE IF NOT EXISTS public.examenes (
 );
 
 ALTER TABLE public.examenes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "examenes_lectura_todos"   ON public.examenes;
+DROP POLICY IF EXISTS "examenes_maestro_escribe" ON public.examenes;
 CREATE POLICY "examenes_lectura_todos"   ON public.examenes FOR SELECT USING (true);
 CREATE POLICY "examenes_maestro_escribe" ON public.examenes FOR ALL
   USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('teacher','admin')));
@@ -152,8 +165,11 @@ CREATE TABLE IF NOT EXISTS public.exam_results (
 );
 
 ALTER TABLE public.exam_results ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "exam_results_propio"        ON public.exam_results FOR SELECT USING (auth.uid() = student_id);
-CREATE POLICY "exam_results_maestro_lee"   ON public.exam_results FOR SELECT
+DROP POLICY IF EXISTS "exam_results_propio"          ON public.exam_results;
+DROP POLICY IF EXISTS "exam_results_maestro_lee"     ON public.exam_results;
+DROP POLICY IF EXISTS "exam_results_maestro_escribe" ON public.exam_results;
+CREATE POLICY "exam_results_propio"          ON public.exam_results FOR SELECT USING (auth.uid() = student_id);
+CREATE POLICY "exam_results_maestro_lee"     ON public.exam_results FOR SELECT
   USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('teacher','admin')));
 CREATE POLICY "exam_results_maestro_escribe" ON public.exam_results FOR ALL
   USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('teacher','admin')));
@@ -171,6 +187,8 @@ CREATE TABLE IF NOT EXISTS public.simulacros (
 );
 
 ALTER TABLE public.simulacros ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "simulacros_lectura_todos"   ON public.simulacros;
+DROP POLICY IF EXISTS "simulacros_maestro_escribe" ON public.simulacros;
 CREATE POLICY "simulacros_lectura_todos"   ON public.simulacros FOR SELECT USING (true);
 CREATE POLICY "simulacros_maestro_escribe" ON public.simulacros FOR ALL
   USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('teacher','admin')));
@@ -189,8 +207,11 @@ CREATE TABLE IF NOT EXISTS public.sim_results (
 );
 
 ALTER TABLE public.sim_results ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "sim_results_propio"         ON public.sim_results FOR SELECT USING (auth.uid() = student_id);
-CREATE POLICY "sim_results_maestro_lee"    ON public.sim_results FOR SELECT
+DROP POLICY IF EXISTS "sim_results_propio"          ON public.sim_results;
+DROP POLICY IF EXISTS "sim_results_maestro_lee"     ON public.sim_results;
+DROP POLICY IF EXISTS "sim_results_maestro_escribe" ON public.sim_results;
+CREATE POLICY "sim_results_propio"          ON public.sim_results FOR SELECT USING (auth.uid() = student_id);
+CREATE POLICY "sim_results_maestro_lee"     ON public.sim_results FOR SELECT
   USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('teacher','admin')));
 CREATE POLICY "sim_results_maestro_escribe" ON public.sim_results FOR ALL
   USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('teacher','admin')));
@@ -208,7 +229,9 @@ CREATE TABLE IF NOT EXISTS public.sim_breakdown (
 );
 
 ALTER TABLE public.sim_breakdown ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "sim_breakdown_propio"         ON public.sim_breakdown FOR SELECT USING (auth.uid() = student_id);
+DROP POLICY IF EXISTS "sim_breakdown_propio"          ON public.sim_breakdown;
+DROP POLICY IF EXISTS "sim_breakdown_maestro_escribe" ON public.sim_breakdown;
+CREATE POLICY "sim_breakdown_propio"          ON public.sim_breakdown FOR SELECT USING (auth.uid() = student_id);
 CREATE POLICY "sim_breakdown_maestro_escribe" ON public.sim_breakdown FOR ALL
   USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('teacher','admin')));
 
@@ -225,6 +248,8 @@ CREATE TABLE IF NOT EXISTS public.eventos (
 );
 
 ALTER TABLE public.eventos ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "eventos_lectura_todos"   ON public.eventos;
+DROP POLICY IF EXISTS "eventos_maestro_escribe" ON public.eventos;
 CREATE POLICY "eventos_lectura_todos"   ON public.eventos FOR SELECT USING (true);
 CREATE POLICY "eventos_maestro_escribe" ON public.eventos FOR ALL
   USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('teacher','admin')));
@@ -245,6 +270,8 @@ CREATE TABLE IF NOT EXISTS public.directorio (
 );
 
 ALTER TABLE public.directorio ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "directorio_lectura_todos" ON public.directorio;
+DROP POLICY IF EXISTS "directorio_admin_escribe" ON public.directorio;
 CREATE POLICY "directorio_lectura_todos"  ON public.directorio FOR SELECT USING (true);
 CREATE POLICY "directorio_admin_escribe"  ON public.directorio FOR ALL
   USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
